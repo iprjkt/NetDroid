@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#111318">
+    <title>NetDroid — Pocket Router &amp; Firewall</title>
+    <link rel="stylesheet" href="css/m3-expressive.css">
+</head>
+<body>
+    <!-- Full-Bleed Customizable Wallpaper & Dim Overlay -->
+    <div class="bg-stage" aria-hidden="true">
+        <div id="bg-wallpaper" class="bg-wallpaper preset-aurora"></div>
+        <div class="bg-dim-overlay"></div>
+    </div>
+
+    <div class="app-shell">
+        <!-- Top Header Bar -->
+        <header class="top-bar">
+            <div class="brand-wrap">
+                <div class="brand-mark" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                        <circle cx="12" cy="20" r="1.4" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-title">NetDroid</div>
+                    <div class="brand-sub">
+                        <span id="conn-dot" class="status-dot"></span>
+                        <span id="brand-sub-text">Connecting to router daemon...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="top-actions">
+                <button id="btn-toggle-theme" type="button" class="icon-btn" title="Toggle Dark / Light Mode" aria-label="Toggle Dark or Light Mode">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2"/><path d="M12 20v2"/>
+                        <path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/>
+                        <path d="M2 12h2"/><path d="M20 12h2"/>
+                        <path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+                    </svg>
+                </button>
+                <button id="btn-logout" type="button" class="icon-btn" style="display:none;" title="Lock Remote Session" aria-label="Lock Remote Session">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="3"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Tab Views -->
+        <main class="main-content">
+
+            <!-- ==================== TAB 1: DASHBOARD ==================== -->
+            <section id="tab-dashboard" class="tab-panel active">
+                <div class="bento-grid">
+
+                    <!-- Mode Hero Card -->
+                    <article class="m3-card hero-card bento-span-2">
+                        <div class="mode-hero-top">
+                            <div class="mode-headline">
+                                <span class="mode-eyebrow">Pocket Router Operation Mode</span>
+                                <h1 id="hero-mode-title" class="mode-title">Normal Mode Active</h1>
+                            </div>
+
+                            <div class="mode-segmented" role="group" aria-label="Operation Mode Switcher">
+                                <button id="btn-mode-normal" type="button" class="mode-seg-btn active">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="6" y="2" width="12" height="20" rx="3"/>
+                                        <line x1="12" y1="18" x2="12.01" y2="18"/>
+                                    </svg>
+                                    Normal
+                                </button>
+                                <button id="btn-mode-tethering" type="button" class="mode-seg-btn">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 20h.01"/>
+                                        <path d="M8.5 16.429a5 5 0 0 1 7 0"/>
+                                        <path d="M5 12.859a10 10 0 0 1 14 0"/>
+                                        <path d="M2 8.82a15 15 0 0 1 20 0"/>
+                                    </svg>
+                                    Tethering
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="hero-pills">
+                            <span id="chip-ttl" class="m3-chip">TTL 64 / HL 64</span>
+                            <span id="chip-mangle" class="m3-chip">Mangle Off</span>
+                            <span id="chip-battery" class="m3-chip">--% • --°C</span>
+                            <span id="chip-adblock" class="m3-chip" style="display:none;">Adblock Off</span>
+                            <span id="chip-procs" class="m3-chip">-- Bg Procs</span>
+                            <button id="chip-lan-url" type="button" class="m3-chip accent clickable" style="display:none;" title="Tap to copy LAN WebUI URL"></button>
+                        </div>
+                    </article>
+
+                    <!-- Live Throughput Card -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Live Throughput</h2>
+                                    <div id="throughput-ifaces" class="card-subtitle">Interface: detecting...</div>
+                                </div>
+                            </div>
+                            <div class="mini-seg">
+                                <button id="src-cellular" type="button" class="active">Cellular</button>
+                                <button id="src-hotspot" type="button">Hotspot</button>
+                            </div>
+                        </div>
+
+                        <div class="speed-badges">
+                            <div class="speed-tile">
+                                <div class="speed-label"><span class="speed-dot rx"></span>Download (Rx)</div>
+                                <div id="val-rx-speed" class="speed-val">0 B/s</div>
+                                <div id="val-rx-total" class="speed-sub">Total 0 B</div>
+                            </div>
+                            <div class="speed-tile">
+                                <div class="speed-label"><span class="speed-dot tx"></span>Upload (Tx)</div>
+                                <div id="val-tx-speed" class="speed-val">0 B/s</div>
+                                <div id="val-tx-total" class="speed-sub">Total 0 B</div>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrap">
+                            <canvas id="throughput-canvas"></canvas>
+                            <div id="chart-tooltip" class="chart-tooltip"></div>
+                        </div>
+                    </article>
+
+                    <!-- Data Quota Summary Card -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon tertiary">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Data Quota</h2>
+                                    <div class="card-subtitle">Persistent cellular usage tracker</div>
+                                </div>
+                            </div>
+                            <button id="btn-reset-session" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Reset Session</button>
+                        </div>
+
+                        <div class="quota-layout">
+                            <div class="quota-ring-box">
+                                <svg viewBox="0 0 128 128">
+                                    <circle class="quota-ring-track" cx="64" cy="64" r="52"/>
+                                    <circle id="quota-ring-fill" class="quota-ring-fill" cx="64" cy="64" r="52"/>
+                                </svg>
+                                <div class="quota-ring-center">
+                                    <div id="quota-ring-pct" class="quota-ring-pct">0%</div>
+                                    <div class="quota-ring-lbl">Daily Quota</div>
+                                </div>
+                            </div>
+
+                            <div class="quota-bars">
+                                <div>
+                                    <div class="quota-row-top">
+                                        <span class="quota-row-name">Session</span>
+                                        <span id="q-session-val" class="quota-row-val">0 B</span>
+                                    </div>
+                                    <div class="m3-progress-track"><div id="bar-session" class="m3-progress-fill"></div></div>
+                                </div>
+                                <div>
+                                    <div class="quota-row-top">
+                                        <span class="quota-row-name">Daily</span>
+                                        <span id="q-daily-val" class="quota-row-val">0 B / 2.00 GB</span>
+                                    </div>
+                                    <div class="m3-progress-track"><div id="bar-daily" class="m3-progress-fill"></div></div>
+                                </div>
+                                <div>
+                                    <div class="quota-row-top">
+                                        <span class="quota-row-name">Monthly</span>
+                                        <span id="q-monthly-val" class="quota-row-val">0 B / 30.00 GB</span>
+                                    </div>
+                                    <div class="m3-progress-track"><div id="bar-monthly" class="m3-progress-fill"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="quota-alert" class="quota-alert"></div>
+                    </article>
+
+                    <!-- Router Quick Glance Card -->
+                    <article class="m3-card bento-span-2">
+                        <div class="glance-grid">
+                            <div class="glance-tile">
+                                <div id="glance-clients" class="glance-val">0</div>
+                                <div class="glance-lbl">Connected Clients</div>
+                            </div>
+                            <div class="glance-tile">
+                                <div id="glance-blocked" class="glance-val">0</div>
+                                <div class="glance-lbl">Active Firewall Blocks</div>
+                            </div>
+                            <div class="glance-tile">
+                                <div id="glance-ram" class="glance-val">-- MB</div>
+                                <div class="glance-lbl">Host Memory Used</div>
+                            </div>
+                            <div class="glance-tile">
+                                <div id="glance-uptime" class="glance-val">--</div>
+                                <div class="glance-lbl">Router Uptime</div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ==================== TAB 2: CLIENTS ==================== -->
+            <section id="tab-clients" class="tab-panel">
+                <article class="m3-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div class="card-icon secondary">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="card-title">Connected Clients</h2>
+                                <div class="card-subtitle">ARP neighbors &amp; DHCP leases with instant FORWARD blocking</div>
+                            </div>
+                        </div>
+                        <div class="header-actions">
+                            <span id="clients-count-badge" class="m3-chip">0 devices</span>
+                            <button id="btn-refresh-clients" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Refresh</button>
+                        </div>
+                    </div>
+
+                    <div id="clients-list" class="item-list">
+                        <div class="empty-state">Scanning hotspot neighbors &amp; DHCP leases...</div>
+                    </div>
+                </article>
+
+                <article class="m3-card" style="margin-top:16px;">
+                    <div class="card-header" style="margin-bottom:12px;">
+                        <div>
+                            <h3 class="card-title">Manual Client Block</h3>
+                            <div class="card-subtitle">Block any MAC or IPv4 address on the iptables FORWARD chain</div>
+                        </div>
+                    </div>
+                    <div class="form-grid-2" style="margin-bottom:10px;">
+                        <input id="input-block-mac" class="m3-input" type="text" placeholder="MAC (aa:bb:cc:dd:ee:ff)">
+                        <input id="input-block-ip" class="m3-input" type="text" placeholder="IPv4 (optional)">
+                    </div>
+                    <button id="btn-manual-block" type="button" class="m3-btn m3-btn-danger">Block Client</button>
+                </article>
+            </section>
+
+            <!-- ==================== TAB 3: FIREWALL & DNS ADBLOCK ==================== -->
+            <section id="tab-firewall" class="tab-panel">
+                <!-- Network-Wide DNS & Adblock Card -->
+                <article class="m3-card" style="margin-bottom:14px;">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div class="card-icon tertiary">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="2" y1="12" x2="22" y2="12"/>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="card-title">Network-Wide DNS &amp; Adblock</h2>
+                                <div class="card-subtitle">Transparent hotspot DNS filtering &amp; custom upstream resolver</div>
+                            </div>
+                        </div>
+                        <span id="dns-status-badge" class="m3-chip">Off</span>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">Network-Wide Adblock</div>
+                            <div class="setting-desc">Filter ads &amp; trackers for all tethered clients via local dnsmasq</div>
+                        </div>
+                        <button id="sw-adblock" type="button" class="m3-switch" aria-label="Toggle Network-Wide Adblock"></button>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-label">Force Router DNS</div>
+                            <div class="setting-desc">Intercept port 53 (UDP/TCP) &amp; block DoT (853) so clients cannot bypass</div>
+                        </div>
+                        <button id="sw-force-dns" type="button" class="m3-switch" aria-label="Toggle Force Router DNS"></button>
+                    </div>
+
+                    <div style="margin-top:12px;">
+                        <div class="setting-label" style="font-size:0.82rem;">Upstream DNS Server</div>
+                        <div class="dns-preset-grid">
+                            <button type="button" class="choice-pill active" data-dns-preset="adguard">AdGuard</button>
+                            <button type="button" class="choice-pill" data-dns-preset="cloudflare">Cloudflare</button>
+                            <button type="button" class="choice-pill" data-dns-preset="quad9">Quad9</button>
+                            <button type="button" class="choice-pill" data-dns-preset="google">Google</button>
+                            <button type="button" class="choice-pill" data-dns-preset="custom">Custom</button>
+                        </div>
+
+                        <div id="dns-custom-wrap" style="display:none;margin-bottom:10px;">
+                            <div class="form-grid-2" style="margin-bottom:8px;">
+                                <input id="input-dns-v4" class="m3-input" type="text" placeholder="Custom IPv4 (e.g. 94.140.14.14)">
+                                <input id="input-dns-v6" class="m3-input" type="text" placeholder="Custom IPv6 (optional)">
+                            </div>
+                            <button id="btn-save-custom-dns" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Apply Custom DNS</button>
+                        </div>
+                    </div>
+
+                    <div class="dns-status-box">
+                        <div>
+                            <div id="dns-blocked-count" class="dns-stat-num">0 domains</div>
+                            <div id="dns-last-updated" class="card-subtitle">Blocklist not downloaded yet</div>
+                        </div>
+                        <button id="btn-update-dns-lists" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Update Lists Now</button>
+                    </div>
+
+                    <div class="domain-rules-section">
+                        <div class="domain-box">
+                            <div class="setting-label" style="font-size:0.8rem;margin-bottom:7px;">Whitelist (Always Allow)</div>
+                            <div class="inline-form">
+                                <input id="input-wl-domain" class="m3-input" type="text" placeholder="example.com">
+                                <button id="btn-add-wl" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Allow</button>
+                            </div>
+                            <div id="dns-wl-chips" class="domain-chips"></div>
+                        </div>
+                        <div class="domain-box">
+                            <div class="setting-label" style="font-size:0.8rem;margin-bottom:7px;">Blacklist (Always Block)</div>
+                            <div class="inline-form">
+                                <input id="input-bl-domain" class="m3-input" type="text" placeholder="ads.example.com">
+                                <button id="btn-add-bl" type="button" class="m3-btn m3-btn-danger m3-btn-sm">Block</button>
+                            </div>
+                            <div id="dns-bl-chips" class="domain-chips"></div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="m3-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="card-title">Host App Firewall</h2>
+                                <div class="card-subtitle">Per-UID iptables &amp; ip6tables OUTPUT rules</div>
+                            </div>
+                        </div>
+                        <span id="apps-count-badge" class="m3-chip">0 apps</span>
+                    </div>
+
+                    <div class="toolbar-row">
+                        <div class="search-box">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input id="input-app-search" class="m3-input" type="search" placeholder="Search package name or UID...">
+                        </div>
+                        <div class="toolbar-actions">
+                            <button id="btn-refresh-apps" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Refresh</button>
+                            <button id="btn-clear-fw" type="button" class="m3-btn m3-btn-danger m3-btn-sm">Clear Rules</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-chips">
+                        <button type="button" class="filter-chip active" data-filter="all">All</button>
+                        <button type="button" class="filter-chip" data-filter="user">User</button>
+                        <button type="button" class="filter-chip" data-filter="system">System</button>
+                        <button type="button" class="filter-chip" data-filter="blocked">Blocked</button>
+                    </div>
+
+                    <div id="apps-list" class="item-list">
+                        <div class="empty-state">Open Firewall tab to inspect installed applications.</div>
+                    </div>
+                </article>
+            </section>
+
+            <!-- ==================== TAB 4: SETTINGS & APPEARANCE ==================== -->
+            <section id="tab-settings" class="tab-panel">
+                <div class="settings-grid">
+
+                    <!-- Smart Battery & Charging Control -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon secondary">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="2" y="7" width="18" height="10" rx="2"/>
+                                        <line x1="22" y1="11" x2="22" y2="13"/>
+                                        <polygon points="11 9 8 13 11 13 10 15 14 11 11 11 11 9" fill="currentColor" stroke="none"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Smart Charging Control</h2>
+                                    <div class="card-subtitle">Safe 24/7 plugged-in pocket router battery protection</div>
+                                </div>
+                            </div>
+                            <span id="bat-ctrl-badge" class="m3-chip">Standard</span>
+                        </div>
+
+                        <div class="telemetry-strip">
+                            <div class="telemetry-tile">
+                                <div id="bat-tel-curr" class="telemetry-val">-- mA</div>
+                                <div class="telemetry-lbl">Current</div>
+                            </div>
+                            <div class="telemetry-tile">
+                                <div id="bat-tel-volt" class="telemetry-val">-- V</div>
+                                <div class="telemetry-lbl">Voltage</div>
+                            </div>
+                            <div class="telemetry-tile">
+                                <div id="bat-tel-temp" class="telemetry-val">--°C</div>
+                                <div class="telemetry-lbl">Temp</div>
+                            </div>
+                        </div>
+
+                        <div id="bat-sysfs-node" class="sysfs-path-chip">Detecting kernel charging sysfs node...</div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Enable Charging Limit</div>
+                                <div class="setting-desc">Pause charging (Idle/Bypass) at Stop % &amp; protect against heat</div>
+                            </div>
+                            <button id="sw-bat-enabled" type="button" class="m3-switch" aria-label="Enable Charging Limit"></button>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Active Only in Tethering Mode</div>
+                                <div class="setting-desc">Automatically restore normal charging when in Normal Mode</div>
+                            </div>
+                            <button id="sw-bat-teth-only" type="button" class="m3-switch" aria-label="Active Only in Tethering Mode"></button>
+                        </div>
+
+                        <div class="slider-group" style="margin-top:12px;">
+                            <div class="slider-head"><span>Stop Charging At</span><span id="val-bat-stop">80%</span></div>
+                            <input id="slider-bat-stop" class="m3-slider" type="range" min="50" max="100" step="1" value="80">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-head"><span>Resume Charging At</span><span id="val-bat-resume">65%</span></div>
+                            <input id="slider-bat-resume" class="m3-slider" type="range" min="30" max="95" step="1" value="65">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-head"><span>Thermal Cutoff Guard</span><span id="val-bat-temp">42.0°C</span></div>
+                            <input id="slider-bat-temp" class="m3-slider" type="range" min="38" max="48" step="0.5" value="42">
+                        </div>
+
+                        <div id="bat-current-section" style="margin-bottom:14px;">
+                            <div class="setting-label" style="font-size:0.8rem;">Max Charging Current</div>
+                            <div class="current-grid">
+                                <button type="button" class="choice-pill active" data-curr-ma="0">Default</button>
+                                <button type="button" class="choice-pill" data-curr-ma="500">500 mA</button>
+                                <button type="button" class="choice-pill" data-curr-ma="1000">1000 mA</button>
+                                <button type="button" class="choice-pill" data-curr-ma="1500">1500 mA</button>
+                            </div>
+                        </div>
+
+                        <button id="btn-save-battery" type="button" class="m3-btn m3-btn-filled">Save &amp; Enforce</button>
+                    </article>
+
+                    <!-- TTL / Hop-Limit & Tethering Engine -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">TTL &amp; Tethering Engine</h2>
+                                    <div class="card-subtitle">Bypass carrier tethering detection &amp; optimize battery</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom:12px;">
+                            <span id="xt-support-badge" class="m3-chip">Checking kernel xt_TTL/xt_HL...</span>
+                        </div>
+
+                        <div class="ttl-presets">
+                            <button type="button" class="ttl-pill" data-ttl="65"><span>TTL 65</span><small>Tether</small></button>
+                            <button type="button" class="ttl-pill" data-ttl="64"><span>TTL 64</span><small>Default</small></button>
+                            <button type="button" class="ttl-pill" data-ttl="128"><span>TTL 128</span><small>Windows</small></button>
+                        </div>
+
+                        <div class="inline-form" style="margin-bottom:14px;">
+                            <input id="input-custom-ttl" class="m3-input" type="number" min="1" max="255" value="65" placeholder="Custom TTL (1-255)">
+                            <button id="btn-apply-ttl" type="button" class="m3-btn m3-btn-filled">Apply</button>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Mangle POSTROUTING Failsafe</div>
+                                <div class="setting-desc">Force outgoing TTL &amp; Hop-Limit on rmnet+/ccmni+ for forwarded packets</div>
+                            </div>
+                            <button id="sw-mangle" type="button" class="m3-switch on" aria-label="Toggle Mangle TTL"></button>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Keep Custom TTL in Normal Mode</div>
+                                <div class="setting-desc">Keep configured TTL active even when not in Tethering Mode</div>
+                            </div>
+                            <button id="sw-ttl-standalone" type="button" class="m3-switch" aria-label="Toggle Standalone TTL"></button>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Pause Auto-Sync in Tethering Mode</div>
+                                <div class="setting-desc">Sets global auto_sync=0 while pocket router mode is active</div>
+                            </div>
+                            <button id="sw-autosync" type="button" class="m3-switch on" aria-label="Toggle Auto Sync Disable"></button>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Disable BPF Tethering Offload</div>
+                                <div class="setting-desc">Ensures all forwarded client flows pass through iptables FORWARD &amp; mangle</div>
+                            </div>
+                            <button id="sw-bpf-offload" type="button" class="m3-switch" aria-label="Toggle BPF Tethering Offload"></button>
+                        </div>
+                    </article>
+
+                    <!-- Appearance & Wallpaper Studio -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon tertiary">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+                                        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+                                        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+                                        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+                                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Appearance &amp; Wallpaper Studio</h2>
+                                    <div class="card-subtitle">Material You dynamic colors &amp; synced custom background</div>
+                                </div>
+                            </div>
+                            <div class="mini-seg">
+                                <button id="theme-mode-dark" type="button" class="active">Dark</button>
+                                <button id="theme-mode-light" type="button">Light</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-upload-drop">
+                            <div>
+                                <div class="setting-label">Custom Wallpaper</div>
+                                <div id="custom-bg-status" class="setting-desc">Upload an image to sync across host &amp; LAN devices</div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <input id="bg-file-input" type="file" accept="image/*" style="display:none;">
+                                <button id="btn-upload-bg" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Upload Image</button>
+                                <button id="btn-clear-bg" type="button" class="m3-btn m3-btn-danger m3-btn-sm" style="display:none;">Remove</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-label" style="font-size:0.8rem;">Curated Mesh Gradients</div>
+                        <div id="preset-grid" class="preset-grid"></div>
+
+                        <div class="slider-group">
+                            <div class="slider-head"><span>Wallpaper Blur</span><span id="val-blur">12px</span></div>
+                            <input id="slider-blur" class="m3-slider" type="range" min="0" max="24" step="1" value="12">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-head"><span>Wallpaper Dim Overlay</span><span id="val-dim">42%</span></div>
+                            <input id="slider-dim" class="m3-slider" type="range" min="10" max="85" step="1" value="42">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-head"><span>Card Glass Opacity</span><span id="val-opacity">76%</span></div>
+                            <input id="slider-opacity" class="m3-slider" type="range" min="40" max="95" step="1" value="76">
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Material You Auto-Extract</div>
+                                <div class="setting-desc">Extract dominant vibrant accent color from uploaded wallpaper</div>
+                            </div>
+                            <button id="sw-auto-extract" type="button" class="m3-switch on" aria-label="Toggle Auto Color Extract"></button>
+                        </div>
+
+                        <div style="margin-top:12px;">
+                            <div class="setting-label" style="font-size:0.8rem;">Manual Accent Override</div>
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                                <div id="accent-swatches" class="swatch-row" style="margin-top:0;"></div>
+                                <label class="accent-picker-wrap" title="Custom Accent Color">
+                                    <input id="accent-picker" type="color" value="#a8c7fa">
+                                </label>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Quota Limits & Alerts -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon secondary">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Quota Limits &amp; Alerts</h2>
+                                    <div class="card-subtitle">Customize data caps &amp; warning thresholds</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2 compact-2col" style="margin-bottom:12px;">
+                            <div class="field-group">
+                                <label for="input-daily-gb">Daily Limit (GB)</label>
+                                <input id="input-daily-gb" class="m3-input" type="number" step="0.5" min="0.1" value="2.0">
+                            </div>
+                            <div class="field-group">
+                                <label for="input-monthly-gb">Monthly Limit (GB)</label>
+                                <input id="input-monthly-gb" class="m3-input" type="number" step="1" min="1" value="30.0">
+                            </div>
+                            <div class="field-group">
+                                <label for="input-warn-pct">Warning Alert (%)</label>
+                                <input id="input-warn-pct" class="m3-input" type="number" min="10" max="98" value="80">
+                            </div>
+                            <div class="field-group">
+                                <label for="input-crit-pct">Critical Alert (%)</label>
+                                <input id="input-crit-pct" class="m3-input" type="number" min="10" max="100" value="90">
+                            </div>
+                        </div>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                            <button id="btn-save-quota" type="button" class="m3-btn m3-btn-filled">Save Limits</button>
+                            <button id="btn-reset-daily" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Reset Daily</button>
+                            <button id="btn-reset-monthly" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Reset Monthly</button>
+                        </div>
+                    </article>
+
+                    <!-- WebUI Server & Security PIN -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="3"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Server &amp; LAN Security</h2>
+                                    <div class="card-subtitle">BusyBox httpd port, WAN boundary &amp; PIN lock</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom:12px;">
+                            <span id="boundary-badge" class="m3-chip success">WAN Blocked (rmnet/ccmni/wwan)</span>
+                        </div>
+
+                        <div class="field-group" style="margin-bottom:12px;">
+                            <label for="input-port">WebUI HTTP Port (localhost &amp; Hotspot LAN)</label>
+                            <div class="inline-form">
+                                <input id="input-port" class="m3-input" type="number" min="1024" max="65535" value="8765">
+                                <button id="btn-save-port" type="button" class="m3-btn m3-btn-tonal">Save Port</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Require PIN for Remote LAN</div>
+                                <div class="setting-desc">Protects WebUI when opened from non-localhost IPs (e.g. tanzanite)</div>
+                            </div>
+                            <button id="sw-auth-enabled" type="button" class="m3-switch on" aria-label="Toggle LAN PIN Authentication"></button>
+                        </div>
+
+                        <div style="margin-top:12px;">
+                            <div class="setting-label" style="font-size:0.84rem;">Change Security PIN</div>
+                            <div id="pin-status-note" class="setting-desc" style="margin-bottom:8px;">Default PIN is 1234.</div>
+                            <div class="form-grid-2" style="margin-bottom:10px;">
+                                <input id="input-cur-pin" class="m3-input" type="password" inputmode="numeric" placeholder="Current PIN (if remote)">
+                                <input id="input-new-pin" class="m3-input" type="password" inputmode="numeric" placeholder="New PIN (4-12 digits)">
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                <button id="btn-change-pin" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Update PIN</button>
+                                <button id="btn-restart-server" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Restart HTTP Server</button>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </section>
+        </main>
+
+        <!-- Floating Material 3 Expressive Navigation Bar / Desktop Rail -->
+        <nav class="nav-dock" aria-label="Primary Navigation">
+            <button type="button" class="nav-item active" data-tab="dashboard">
+                <span class="nav-pill">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9" rx="2"/>
+                        <rect x="14" y="3" width="7" height="5" rx="2"/>
+                        <rect x="14" y="12" width="7" height="9" rx="2"/>
+                        <rect x="3" y="16" width="7" height="5" rx="2"/>
+                    </svg>
+                </span>
+                <span>Home</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="clients">
+                <span class="nav-pill">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </span>
+                <span>Clients</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="firewall">
+                <span class="nav-pill">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </span>
+                <span>Firewall</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="settings">
+                <span class="nav-pill">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </span>
+                <span>Settings</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Remote LAN PIN Authentication Overlay -->
+    <div id="pin-overlay" class="pin-overlay" role="dialog" aria-modal="true" aria-labelledby="pin-title">
+        <div id="pin-card" class="pin-card">
+            <div class="brand-mark" style="margin:0 auto 12px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="3"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <h2 id="pin-title" style="margin:0;font-size:1.25rem;font-weight:800;">NetDroid Remote Access</h2>
+            <div id="pin-device-sub" class="card-subtitle" style="margin-top:4px;">Enter PIN to manage router over LAN</div>
+
+            <div id="pin-dots" class="pin-dots"></div>
+            <div id="pin-err" class="pin-err"></div>
+
+            <div class="pin-keypad">
+                <button type="button" class="pin-key" data-digit="1">1</button>
+                <button type="button" class="pin-key" data-digit="2">2</button>
+                <button type="button" class="pin-key" data-digit="3">3</button>
+                <button type="button" class="pin-key" data-digit="4">4</button>
+                <button type="button" class="pin-key" data-digit="5">5</button>
+                <button type="button" class="pin-key" data-digit="6">6</button>
+                <button type="button" class="pin-key" data-digit="7">7</button>
+                <button type="button" class="pin-key" data-digit="8">8</button>
+                <button type="button" class="pin-key" data-digit="9">9</button>
+                <button id="pin-key-del" type="button" class="pin-key" aria-label="Backspace">⌫</button>
+                <button type="button" class="pin-key" data-digit="0">0</button>
+                <button id="pin-key-ok" type="button" class="pin-key submit" aria-label="Unlock">→</button>
+            </div>
+
+            <div id="pin-hint" class="pin-hint">Default PIN is 1234</div>
+        </div>
+    </div>
+
+    <!-- Snackbar Toasts -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <script src="js/charts.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+#!/system/bin/sh
+# NetDroid CLI Helper Tool
+# Usage: netdroid <status | mode <tethering|normal> | ttl <value> | clients | firewall reapply | restart | stop>
+
+export PATH="/data/adb/ksu/bin:/data/adb/ap/bin:/data/adb/magisk:/system/bin:/system/xbin:/vendor/bin:$PATH"
+
+MOD_DIR="/data/adb/modules/netdroid"
+[ ! -d "$MOD_DIR/webroot/cgi-bin" ] && [ -d "/data/adb/modules_update/netdroid/webroot/cgi-bin" ] && MOD_DIR="/data/adb/modules_update/netdroid"
+CGI_DIR="$MOD_DIR/webroot/cgi-bin"
+DATA_DIR="/data/adb/netdroid"
+CONFIG_FILE="$DATA_DIR/config.env"
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "NetDroid CLI requires root privileges. Run with: su -c 'netdroid $*'"
+    exit 1
+fi
+
+if [ ! -d "$CGI_DIR" ]; then
+    echo "Error: NetDroid module directory not found at $MOD_DIR"
+    exit 1
+fi
+
+detect_bb() {
+    for b in /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox /data/adb/magisk/busybox; do
+        if [ -x "$b" ]; then
+            echo "$b"
+            return 0
+        fi
+    done
+    command -v busybox 2>/dev/null
+}
+
+BB="$(detect_bb)"
+AWK="${BB:+$BB awk}"; [ -z "$AWK" ] && AWK="awk"
+
+fmt_bytes() {
+    $AWK -v b="$1" 'BEGIN {
+        if (b >= 1073741824) printf "%.2f GB", b / 1073741824
+        else if (b >= 1048576) printf "%.2f MB", b / 1048576
+        else if (b >= 1024) printf "%.1f KB", b / 1024
+        else printf "%.0f B", b
+    }'
+}
+
+show_status() {
+    PORT=8765
+    MODE="normal"
+    TTL=65
+    [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE" 2>/dev/null
+
+    cur_ttl="$(cat /proc/sys/net/ipv4/ip_default_ttl 2>/dev/null || echo 64)"
+    cur_hl="$(cat /proc/sys/net/ipv6/conf/all/hop_limit 2>/dev/null || echo 64)"
+    cur_fwd="$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo 0)"
+    bat_pct="$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo '?')"
+    bat_raw="$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)"
+    bat_c="$($AWK -v t="$bat_raw" 'BEGIN { printf "%.1f", t/10 }')"
+
+    hpid="$(cat "$DATA_DIR/httpd.pid" 2>/dev/null)"
+    httpd_state="STOPPED"
+    if [ -n "$hpid" ] && kill -0 "$hpid" 2>/dev/null; then
+        httpd_state="RUNNING (PID $hpid)"
+    fi
+
+    lpid="$(cat "$DATA_DIR/logger.pid" 2>/dev/null)"
+    logger_state="STOPPED"
+    if [ -n "$lpid" ] && kill -0 "$lpid" 2>/dev/null; then
+        logger_state="RUNNING (PID $lpid)"
+    fi
+
+    boundary="INACTIVE"
+    iptables -w 2 -C INPUT -j NETDROID_IN 2>/dev/null && boundary="ACTIVE (WAN blocked)"
+
+    mangle="INACTIVE"
+    iptables -w 2 -t mangle -C POSTROUTING -j NETDROID_TTL 2>/dev/null && mangle="ACTIVE"
+
+    app_blk="$($AWK '/^APP\|/{c++} END{print c+0}' "$DATA_DIR/firewall.rules" 2>/dev/null)"
+    cli_blk="$($AWK '/^CLIENT\|/{c++} END{print c+0}' "$DATA_DIR/firewall.rules" 2>/dev/null)"
+    [ -z "$app_blk" ] && app_blk=0
+    [ -z "$cli_blk" ] && cli_blk=0
+    rest_cnt=0
+    [ -s "$DATA_DIR/restricted_apps.list" ] && rest_cnt="$(wc -l < "$DATA_DIR/restricted_apps.list" 2>/dev/null | $BB tr -d ' ')"
+
+    echo "============================================="
+    echo "  NetDroid Pocket Router Status"
+    echo "============================================="
+    echo "  Operation Mode : $MODE"
+    echo "  IPv4 TTL       : $cur_ttl (configured: $TTL)"
+    echo "  IPv6 Hop-Limit : $cur_hl"
+    echo "  IPv4 Forward   : $cur_fwd"
+    echo "  Mangle TTL/HL  : $mangle"
+    echo "  Restricted Apps: $rest_cnt"
+    echo "---------------------------------------------"
+    echo "  HTTP Server    : $httpd_state"
+    echo "  Quota Logger   : $logger_state"
+    echo "  WAN Boundary   : $boundary"
+    echo "  Local WebUI    : http://127.0.0.1:$PORT"
+    ip -4 -br addr 2>/dev/null | $AWK -v p="$PORT" '
+        $1 ~ /^(wlan|ap|swlan|softap|rndis|usb|ncm)/ && $2 != "DOWN" {
+            for (i=3; i<=NF; i++) {
+                if ($i ~ /^[0-9]+\./) {
+                    ip = $i; sub(/\/.*/, "", ip)
+                    printf "  LAN WebUI (%s): http://%s:%s\n", $1, ip, p
+                }
+            }
+        }'
+    echo "---------------------------------------------"
+    echo "  Battery        : ${bat_pct}% (${bat_c}°C)"
+    echo "  Firewall Rules : ${app_blk} apps, ${cli_blk} clients blocked"
+    if [ -s "$DATA_DIR/quota.json" ]; then
+        qline="$(cat "$DATA_DIR/quota.json")"
+        eval "$($AWK '
+        function g(s,k, m,r){ r="\""k"\":[0-9.]+"; if(match(s,r)){m=substr(s,RSTART,RLENGTH); sub(/^[^:]+:/,"",m); return m+0} return 0 }
+        { s=s $0 }
+        END {
+            printf "S_TOT=%.0f; D_TOT=%.0f; M_TOT=%.0f\n", g(s,"session_rx")+g(s,"session_tx"), g(s,"daily_rx")+g(s,"daily_tx"), g(s,"monthly_rx")+g(s,"monthly_tx")
+        }' "$DATA_DIR/quota.json")"
+        echo "  Session Usage  : $(fmt_bytes "$S_TOT")"
+        echo "  Daily Usage    : $(fmt_bytes "$D_TOT")"
+        echo "  Monthly Usage  : $(fmt_bytes "$M_TOT")"
+    fi
+    echo "============================================="
+}
+
+show_clients() {
+    echo "Connected Hotspot / LAN Clients:"
+    echo "---------------------------------------------------------------------"
+    printf "%-18s %-16s %-19s %-10s %-8s\n" "HOSTNAME" "IPV4" "MAC" "STATE" "BLOCKED"
+    sh "$CGI_DIR/monitor.sh" clients 1 | $AWK '
+    {
+        s = $0
+        while (match(s, /\{[^\{\}]+\}/)) {
+            obj = substr(s, RSTART, RLENGTH)
+            s = substr(s, RSTART + RLENGTH)
+            if (obj !~ /"mac":/) continue
+            host = obj; sub(/.*"hostname":"/, "", host); sub(/".*/, "", host)
+            ip   = obj; sub(/.*"ipv4":"/, "", ip);       sub(/".*/, "", ip)
+            mac  = obj; sub(/.*"mac":"/, "", mac);       sub(/".*/, "", mac)
+            st   = obj; sub(/.*"status":"/, "", st);     sub(/".*/, "", st)
+            blk  = (obj ~ /"blocked":true/) ? "YES" : "NO"
+            printf "%-18s %-16s %-19s %-10s %-8s\n", substr(host,1,18), ip, mac, st, blk
+        }
+    }'
+    echo "---------------------------------------------------------------------"
+}
+
+show_help() {
+    cat <<'EOF'
+NetDroid CLI Helper
+
+Usage:
+  netdroid status                  Show full router, TTL, quota & daemon status
+  netdroid mode tethering          Switch to Tethering Mode (TTL=65 + Battery Saver)
+  netdroid mode normal             Switch to Normal Mode (restore TTL=64 & apps)
+  netdroid ttl <1-255>             Set custom TTL / Hop-Limit
+  netdroid clients                 List connected hotspot / USB tether clients
+  netdroid firewall reapply        Reapply security boundary & saved firewall rules
+  netdroid restart                 Restart NetDroid HTTP & quota logger daemons
+  netdroid stop                    Stop NetDroid daemons
+EOF
+}
+
+case "$1" in
+    status|"")
+        show_status
+        ;;
+    mode)
+        case "$2" in
+            tethering)
+                echo "Switching to Tethering Mode..."
+                sh "$CGI_DIR/mode.sh" tethering
+                ;;
+            normal)
+                echo "Switching to Normal Mode..."
+                sh "$CGI_DIR/mode.sh" normal
+                ;;
+            *)
+                echo "Usage: netdroid mode <tethering|normal>"
+                exit 1
+                ;;
+        esac
+        ;;
+    ttl)
+        if [ -z "$2" ]; then
+            echo "Usage: netdroid ttl <1-255>"
+            exit 1
+        fi
+        sh "$CGI_DIR/mode.sh" set_ttl "$2"
+        ;;
+    clients)
+        show_clients
+        ;;
+    firewall)
+        case "$2" in
+            reapply)
+                sh "$CGI_DIR/firewall.sh" apply_all
+                echo "Firewall & security boundary reapplied."
+                ;;
+            *)
+                sh "$CGI_DIR/firewall.sh" status
+                ;;
+        esac
+        ;;
+    restart|start)
+        sh "$MOD_DIR/service.sh" restart
+        echo "NetDroid daemons restarted."
+        ;;
+    stop)
+        sh "$MOD_DIR/service.sh" stop
+        echo "NetDroid daemons stopped."
+        ;;
+    help|-h|--help)
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac

@@ -1,0 +1,6 @@
+id=netdroid
+name=NetDroid
+version=v1.1.0
+versionCode=110
+author=iprjkt
+description=Portable Pocket Router, Firewall, Real-Time Quota Monitor, TTL/Hop-Limit Optimizer, Smart Charging Control, Network-Wide DNS/Adblock & Material 3 Expressive WebUI for KernelSU.
