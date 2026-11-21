@@ -34,7 +34,15 @@ if [ ! -f "$DATA_DIR/config/dns.json" ]; then
     printf '{"adblock_enabled":false,"force_router_dns":false,"preset":"adguard","custom_ipv4":"","custom_ipv6":"","whitelist":[],"blacklist":[],"blocked_domains_count":0,"last_updated":0,"last_error":""}\n' > "$DATA_DIR/config/dns.json"
 fi
 [ -f "$DATA_DIR/config/adblock.hosts" ] || : > "$DATA_DIR/config/adblock.hosts"
-chmod 0644 "$DATA_DIR/config/battery.json" "$DATA_DIR/config/dns.json" "$DATA_DIR/config/adblock.hosts" 2>/dev/null
+if [ ! -f "$DATA_DIR/config/ssh.json" ]; then
+    printf '{"enabled":false,"port":2222,"password_auth":true}\n' > "$DATA_DIR/config/ssh.json"
+fi
+[ -f "$DATA_DIR/config/authorized_keys" ] || : > "$DATA_DIR/config/authorized_keys"
+if [ ! -f "$DATA_DIR/config/share.json" ]; then
+    printf '{"enabled":true,"root_path":"/sdcard/NetDroidShare","read_only":false,"webdav_enabled":false,"webdav_port":8766}\n' > "$DATA_DIR/config/share.json"
+fi
+chmod 0644 "$DATA_DIR/config/battery.json" "$DATA_DIR/config/dns.json" "$DATA_DIR/config/adblock.hosts" "$DATA_DIR/config/ssh.json" "$DATA_DIR/config/share.json" 2>/dev/null
+chmod 0600 "$DATA_DIR/config/authorized_keys" 2>/dev/null
 
 # Compute SHA-256 of default PIN "1234"
 if [ -n "$BB" ]; then
@@ -101,6 +109,7 @@ ui_print "- Setting module file permissions..."
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm_recursive "$MODPATH/webroot/cgi-bin" 0 0 0755 0755
 set_perm_recursive "$MODPATH/system/bin" 0 0 0755 0755
+[ -d "$MODPATH/bin" ] && set_perm_recursive "$MODPATH/bin" 0 0 0755 0755
 set_perm "$MODPATH/service.sh" 0 0 0755
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 

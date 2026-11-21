@@ -163,6 +163,7 @@ start_logger() {
                     sh \"$CGI_DIR/firewall.sh\" apply_all >/dev/null 2>&1 || true
                 fi
                 sh \"$CGI_DIR/dns.sh\" watchdog >/dev/null 2>&1 || true
+                sh \"$CGI_DIR/ssh.sh\" watchdog >/dev/null 2>&1 || true
             fi
             sleep 5
         done
@@ -189,6 +190,8 @@ case "$1" in
         stop_logger
         stop_httpd
         sh "$CGI_DIR/dns.sh" cleanup >/dev/null 2>&1 || true
+        sh "$CGI_DIR/ssh.sh" stop >/dev/null 2>&1 || true
+        sh "$CGI_DIR/share.sh" stop >/dev/null 2>&1 || true
         sh "$CGI_DIR/battery.sh" restore >/dev/null 2>&1 || true
         log_msg "Stopped NetDroid daemons"
         exit 0
@@ -199,6 +202,8 @@ case "$1" in
         sh "$CGI_DIR/mode.sh" restore_boot >/dev/null 2>&1 || true
         sh "$CGI_DIR/battery.sh" enforce >/dev/null 2>&1 || true
         sh "$CGI_DIR/dns.sh" apply >/dev/null 2>&1 || true
+        sh "$CGI_DIR/ssh.sh" apply >/dev/null 2>&1 || true
+        sh "$CGI_DIR/share.sh" sync >/dev/null 2>&1 || true
         start_httpd
         start_logger
         exit 0
@@ -223,11 +228,13 @@ sh "$CGI_DIR/firewall.sh" apply_all >/dev/null 2>&1 || true
 # 2. Restore saved mode & TTL / Hop-Limit state
 sh "$CGI_DIR/mode.sh" restore_boot >/dev/null 2>&1 || true
 
-# 3. Apply Smart Charging & Network-Wide DNS/Adblock state
+# 3. Apply Smart Charging, DNS/Adblock, SSH & Pocket NAS state
 sh "$CGI_DIR/battery.sh" enforce >/dev/null 2>&1 || true
 sh "$CGI_DIR/dns.sh" apply >/dev/null 2>&1 || true
+sh "$CGI_DIR/ssh.sh" apply >/dev/null 2>&1 || true
+sh "$CGI_DIR/share.sh" sync >/dev/null 2>&1 || true
 
-# 4. Start BusyBox httpd & quota/battery/dns daemon
+# 4. Start BusyBox httpd & quota/battery/dns/ssh daemon
 start_httpd
 start_logger
 

@@ -373,6 +373,10 @@
         } else if (tabId === 'firewall') {
             loadDns();
             if (!appState.appsLoaded) fetchApps(false);
+        } else if (tabId === 'share') {
+            if (window.NetDroidHomelab) window.NetDroidHomelab.loadShare();
+        } else if (tabId === 'terminal') {
+            if (window.NetDroidHomelab) window.NetDroidHomelab.loadSsh();
         } else if (tabId === 'settings') {
             loadSettings();
             loadBattery();
@@ -1475,18 +1479,24 @@
     /* -------------------- Bootstrapping -------------------- */
     function boot() {
         ApiClient.loadToken();
+        window.NetDroidApi = ApiClient;
+        window.NetDroidToast = toast;
         chart = new window.NetDroidCharts.ThroughputChart($('throughput-canvas'), $('chart-tooltip'), 48);
 
         window.NetDroidTheme.init(ApiClient, function () {
             if (chart) chart.draw();
         }, toast);
 
+        if (window.NetDroidHomelab) {
+            window.NetDroidHomelab.init();
+        }
+
         setupPinKeypad();
         wireControls();
 
-        // Check hash for initial tab (#clients, #firewall, #settings)
+        // Check hash for initial tab (#clients, #firewall, #share, #terminal, #settings)
         var initialHash = (location.hash || '').replace('#', '');
-        if (/^(dashboard|clients|firewall|settings)$/.test(initialHash)) {
+        if (/^(dashboard|clients|firewall|share|terminal|settings)$/.test(initialHash)) {
             switchTab(initialHash, false);
         }
 
@@ -1503,6 +1513,8 @@
                 loadBattery();
                 if (appState.activeTab === 'clients') fetchClients(false);
                 if (appState.activeTab === 'firewall') { loadDns(); fetchApps(false); }
+                if (appState.activeTab === 'share' && window.NetDroidHomelab) window.NetDroidHomelab.loadShare();
+                if (appState.activeTab === 'terminal' && window.NetDroidHomelab) window.NetDroidHomelab.loadSsh();
             } else {
                 showPinOverlay(info || {});
             }

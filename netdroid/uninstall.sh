@@ -47,6 +47,12 @@ fi
 if [ -f "$MODDIR/webroot/cgi-bin/dns.sh" ]; then
     sh "$MODDIR/webroot/cgi-bin/dns.sh" cleanup >/dev/null 2>&1 || true
 fi
+if [ -f "$MODDIR/webroot/cgi-bin/ssh.sh" ]; then
+    sh "$MODDIR/webroot/cgi-bin/ssh.sh" stop >/dev/null 2>&1 || true
+fi
+if [ -f "$MODDIR/webroot/cgi-bin/share.sh" ]; then
+    sh "$MODDIR/webroot/cgi-bin/share.sh" stop >/dev/null 2>&1 || true
+fi
 
 # 3. Clean custom iptables/ip6tables chains
 if [ -f "$MODDIR/webroot/cgi-bin/firewall.sh" ]; then

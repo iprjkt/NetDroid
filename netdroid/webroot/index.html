@@ -389,7 +389,238 @@
                 </article>
             </section>
 
-            <!-- ==================== TAB 4: SETTINGS & APPEARANCE ==================== -->
+            <!-- ==================== TAB 4: FILES / POCKET NAS ==================== -->
+            <section id="tab-share" class="tab-panel">
+                <article class="m3-card" style="margin-bottom:14px;">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div class="card-icon secondary">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="card-title">LAN Shared Folder (Pocket NAS)</h2>
+                                <div class="card-subtitle">Fast resumable LAN file transfers &amp; OTG sharing</div>
+                            </div>
+                        </div>
+                        <button id="btn-share-qr" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Share / QR</button>
+                    </div>
+
+                    <!-- Storage Capacity Bar -->
+                    <div style="margin-bottom:14px;">
+                        <div class="quota-row-top">
+                            <span id="share-storage-text" class="quota-row-name">Detecting storage...</span>
+                            <span id="share-storage-pct" class="quota-row-val">--% used</span>
+                        </div>
+                        <div class="m3-progress-track">
+                            <div id="share-storage-fill" class="m3-progress-fill" style="width:0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Root Folder + Read/Write Mode -->
+                    <div class="form-grid-2" style="margin-bottom:12px;">
+                        <div class="field-group">
+                            <label for="select-share-root">Shared Directory</label>
+                            <select id="select-share-root" class="m3-input">
+                                <option value="/sdcard/NetDroidShare">/sdcard/NetDroidShare</option>
+                            </select>
+                        </div>
+                        <div class="field-group">
+                            <label>Access Permission Mode</label>
+                            <div class="mini-seg" style="width:100%;display:grid;grid-template-columns:1fr 1fr;">
+                                <button id="share-mode-rw" type="button" class="active">Read &amp; Write</button>
+                                <button id="share-mode-ro" type="button">Read-Only</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optional Native WebDAV (shown automatically when rclone is available) -->
+                    <div id="share-webdav-row" class="setting-row" style="display:none;">
+                        <div>
+                            <div class="setting-label">Native WebDAV Server (:8766)</div>
+                            <div class="setting-desc">Mount shared folder directly in Linux / Android file managers</div>
+                        </div>
+                        <button id="sw-share-webdav" type="button" class="m3-switch" aria-label="Toggle WebDAV"></button>
+                    </div>
+                </article>
+
+                <article class="m3-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div>
+                                <h3 class="card-title">File Browser</h3>
+                                <div class="card-subtitle">HTTP Range resumable downloads &amp; zero-RAM streaming uploads</div>
+                            </div>
+                        </div>
+                        <div class="header-actions">
+                            <div class="mini-seg">
+                                <button id="share-view-list" type="button" class="active">List</button>
+                                <button id="share-view-grid" type="button">Grid</button>
+                            </div>
+                            <button id="btn-share-mkdir" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">+ Folder</button>
+                            <button id="btn-share-refresh" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Refresh</button>
+                        </div>
+                    </div>
+
+                    <div id="share-breadcrumbs" class="share-breadcrumbs"></div>
+
+                    <!-- Drag & Drop Multi-File Upload Zone -->
+                    <div id="share-upload-zone" class="upload-dropzone">
+                        <div style="font-size:0.84rem;font-weight:700;">Drop files here or select multiple files to upload</div>
+                        <div style="font-size:0.72rem;color:var(--md-on-surface-variant);">Streams directly to storage in 2 MB chunks — safe for large ROMs &amp; ISOs</div>
+                        <input id="share-file-input" type="file" multiple style="display:none;">
+                        <button id="btn-share-upload" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Upload Files</button>
+                    </div>
+
+                    <div id="share-upload-progress" style="display:none;margin-bottom:12px;">
+                        <div id="share-upload-status" class="card-subtitle" style="margin-bottom:6px;font-weight:700;">Uploading...</div>
+                        <div class="m3-progress-track">
+                            <div id="share-upload-bar" class="m3-progress-fill" style="width:0%;"></div>
+                        </div>
+                    </div>
+
+                    <div id="share-file-list" class="item-list">
+                        <div class="empty-state">Opening shared folder...</div>
+                    </div>
+                </article>
+            </section>
+
+            <!-- ==================== TAB 5: CONSOLE & SSH SERVER ==================== -->
+            <section id="tab-terminal" class="tab-panel">
+                <div class="settings-grid" style="margin-bottom:14px;">
+                    <!-- SSH Server Status Card -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="4 17 10 11 4 5"/>
+                                        <line x1="12" y1="19" x2="20" y2="19"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">SSH Server</h2>
+                                    <div class="card-subtitle">LAN-only remote shell (blocked on cellular rmnet+)</div>
+                                </div>
+                            </div>
+                            <span id="ssh-status-badge" class="m3-chip">Stopped</span>
+                        </div>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;">
+                            <span id="ssh-daemon-chip" class="m3-chip accent">Dropbear • Port 2222</span>
+                            <span class="m3-chip success">WAN Blocked</span>
+                        </div>
+
+                        <button id="btn-copy-ssh-cmd" type="button" class="ssh-cmd-bar" title="Tap to copy SSH command">
+                            ssh root@127.0.0.1 -p 2222
+                        </button>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Enable SSH Daemon</div>
+                                <div class="setting-desc">Starts lightweight Dropbear SSH bound strictly to LAN &amp; localhost</div>
+                            </div>
+                            <button id="sw-ssh-enabled" type="button" class="m3-switch" aria-label="Enable SSH Daemon"></button>
+                        </div>
+
+                        <div class="setting-row">
+                            <div>
+                                <div class="setting-label">Allow NetDroid PIN Password Login</div>
+                                <div class="setting-desc">Login using your NetDroid security PIN (disable for Public Key only)</div>
+                            </div>
+                            <button id="sw-ssh-passwd" type="button" class="m3-switch on" aria-label="Toggle Password Login"></button>
+                        </div>
+
+                        <div class="field-group" style="margin-top:10px;">
+                            <label for="input-ssh-port">SSH Port</label>
+                            <div class="inline-form">
+                                <input id="input-ssh-port" class="m3-input" type="number" min="1024" max="65535" value="2222">
+                                <button id="btn-save-ssh-port" type="button" class="m3-btn m3-btn-tonal">Save Port</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:12px;">
+                            <div class="setting-label" style="font-size:0.78rem;margin-bottom:6px;">Active SSH Sessions</div>
+                            <div id="ssh-sessions-list" style="display:flex;flex-wrap:wrap;gap:6px;">
+                                <span style="font-size:0.74rem;color:var(--md-on-surface-variant);">No active SSH sessions</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- SSH Public Keys Manager -->
+                    <article class="m3-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <div class="card-icon tertiary">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="card-title">Authorized Public Keys</h2>
+                                    <div class="card-subtitle">Passwordless SSH access for laptops &amp; Termux clients</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field-group" style="margin-bottom:8px;">
+                            <label for="input-ssh-key-label">Device Label</label>
+                            <input id="input-ssh-key-label" class="m3-input" type="text" placeholder="e.g. Arch-Vostro or Tanzanite-Termux">
+                        </div>
+                        <div class="field-group" style="margin-bottom:10px;">
+                            <label for="input-ssh-key-pub">Public Key (.pub)</label>
+                            <textarea id="input-ssh-key-pub" class="m3-textarea" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."></textarea>
+                        </div>
+                        <button id="btn-add-ssh-key" type="button" class="m3-btn m3-btn-filled m3-btn-sm" style="margin-bottom:14px;">Save Public Key</button>
+
+                        <div id="ssh-keys-list" class="item-list"></div>
+                    </article>
+                </div>
+
+                <!-- Embedded Web Console -->
+                <article class="m3-card">
+                    <div class="card-header" style="margin-bottom:12px;">
+                        <div class="card-title-group">
+                            <div>
+                                <h2 class="card-title">Embedded Web Console</h2>
+                                <div class="card-subtitle">Quick root shell with persistent working directory &amp; mobile shortcuts</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="term-shell">
+                        <div class="term-topbar">
+                            <span class="term-dots">
+                                <span style="background:#ef5350;"></span>
+                                <span style="background:#ffca28;"></span>
+                                <span style="background:#66bb6a;"></span>
+                            </span>
+                            <span id="term-cwd-label">/data/adb/netdroid</span>
+                        </div>
+                        <div id="term-output" class="term-output">
+                            <div class="term-line hint">NetDroid Embedded Root Console ready. Type a command or tap a quick action below.</div>
+                        </div>
+                        <div class="term-shortcuts">
+                            <button id="btn-term-ctrlc" type="button" class="term-key-btn">Ctrl+C</button>
+                            <button id="btn-term-tab" type="button" class="term-key-btn">Tab</button>
+                            <button id="btn-term-up" type="button" class="term-key-btn">↑</button>
+                            <button id="btn-term-down" type="button" class="term-key-btn">↓</button>
+                            <button id="btn-term-clear" type="button" class="term-key-btn">Clear</button>
+                            <button type="button" class="term-key-btn" data-term-snip="netdroid status">status</button>
+                            <button type="button" class="term-key-btn" data-term-snip="ip -br addr">ip addr</button>
+                            <button type="button" class="term-key-btn" data-term-snip="df -h">df -h</button>
+                        </div>
+                        <div class="term-input-row">
+                            <span class="term-prompt-tag" style="font-family:var(--font-mono);font-weight:800;">#</span>
+                            <input id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Enter shell command...">
+                            <button id="btn-term-run" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Run</button>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <!-- ==================== TAB 6: SETTINGS & APPEARANCE ==================== -->
             <section id="tab-settings" class="tab-panel">
                 <div class="settings-grid">
 
@@ -741,6 +972,23 @@
                 </span>
                 <span>Firewall</span>
             </button>
+            <button type="button" class="nav-item" data-tab="share">
+                <span class="nav-pill">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </span>
+                <span>Files</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="terminal">
+                <span class="nav-pill">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="4 17 10 11 4 5"/>
+                        <line x1="12" y1="19" x2="20" y2="19"/>
+                    </svg>
+                </span>
+                <span>Console</span>
+            </button>
             <button type="button" class="nav-item" data-tab="settings">
                 <span class="nav-pill">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -787,11 +1035,26 @@
         </div>
     </div>
 
+    <!-- Offline Share Link & QR Code Modal -->
+    <div id="qr-modal-overlay" class="pin-overlay" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+        <div class="pin-card">
+            <h2 id="qr-title" style="margin:0;font-size:1.15rem;font-weight:800;">Share Pocket NAS</h2>
+            <div class="card-subtitle" style="margin-top:4px;">Scan from any phone connected to this hotspot</div>
+            <div id="qr-svg-box" class="qr-box"></div>
+            <div id="qr-url-text" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--md-primary);word-break:break-all;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:8px;justify-content:center;">
+                <button id="btn-qr-copy" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Copy Link</button>
+                <button id="btn-qr-close" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Snackbar Toasts -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <script src="js/charts.js"></script>
     <script src="js/theme.js"></script>
+    <script src="js/homelab.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -214,6 +214,10 @@ if [ -z "$ACTION" ] && [ -n "$PATH_INFO" ]; then
         /api/battery|/battery) ACTION="battery" ;;
         /api/dns/update-lists|/dns/update-lists) ACTION="dns_update_lists" ;;
         /api/dns|/dns) ACTION="dns" ;;
+        /api/ssh|/ssh) ACTION="ssh" ;;
+        /api/term/exec|/term/exec) ACTION="term_exec" ;;
+        /api/share/list|/share/list) ACTION="share_list" ;;
+        /api/share/manage|/share/manage) ACTION="share_manage" ;;
     esac
 fi
 [ -z "$ACTION" ] && ACTION="$1"
@@ -585,6 +589,56 @@ case "$ACTION" in
         else
             sh "$SCRIPT_DIR/dns.sh" update_lists
         fi
+        ;;
+
+    ssh)
+        send_headers "200 OK"
+        if [ "$REQUEST_METHOD" = "POST" ]; then
+            s_en="$(param_get enabled)"
+            s_port="$(param_get port)"
+            s_pw="$(param_get password_auth)"
+            s_lbl="$(param_get label)"
+            s_key="$(param_get add_key)"
+            s_rm="$(param_get remove_key)"
+            sh "$SCRIPT_DIR/ssh.sh" save "$s_en" "$s_port" "$s_pw" "$s_lbl" "$s_key" "$s_rm"
+        else
+            sh "$SCRIPT_DIR/ssh.sh" status
+        fi
+        ;;
+
+    term_exec)
+        send_headers "200 OK"
+        t_cmd="$(param_get cmd)"
+        sh "$SCRIPT_DIR/terminal.sh" exec "$t_cmd"
+        ;;
+
+    term_complete)
+        send_headers "200 OK"
+        t_tok="$(param_get token)"
+        sh "$SCRIPT_DIR/terminal.sh" complete "$t_tok"
+        ;;
+
+    term_kill)
+        send_headers "200 OK"
+        sh "$SCRIPT_DIR/terminal.sh" kill
+        ;;
+
+    share_list)
+        send_headers "200 OK"
+        sh_path="$(param_get path)"
+        sh "$SCRIPT_DIR/share.sh" list "$sh_path"
+        ;;
+
+    share_manage)
+        send_headers "200 OK"
+        sh_op="$(param_get op)"
+        sh_path="$(param_get path)"
+        sh_name="$(param_get name)"
+        sh_new="$(param_get new_name)"
+        sh_root="$(param_get root_path)"
+        sh_ro="$(param_get read_only)"
+        sh_wd="$(param_get webdav_enabled)"
+        sh "$SCRIPT_DIR/share.sh" manage "$sh_op" "$sh_path" "$sh_name" "$sh_new" "$sh_root" "$sh_ro" "$sh_wd"
         ;;
 
     *)

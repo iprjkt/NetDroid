@@ -26,8 +26,14 @@ Manage your host router both locally on the device (`localhost:8765` or KernelSU
 - **Network-Wide DNS & Adblock:**
   - Dedicated port-5353 `dnsmasq` resolver so reloading rules never drops active Android hotspot/tethering sessions.
   - Upstream presets (`AdGuard`, `Cloudflare`, `Quad9`, `Google`, or `Custom` IPv4/IPv6), downloadable hosts blocklist engine, instant custom Whitelist/Blacklist, transparent `iptables` port-53 redirection, and optional **Force Router DNS** (DoT port 853 blocking).
+- **Dropbear SSH Server & Embedded Web Console:**
+  - Bundled static ARM64 Dropbear (`dropbear` + `dropbearkey` + `scp`) with Android `root` fallback, full KSU/BusyBox `PATH`, Authorized Public Keys manager (`/data/adb/modules/netdroid/config/authorized_keys`), NetDroid PIN password auth toggle, and strict LAN-only WAN blocking (`NETDROID_IN`).
+  - PIN-protected **Embedded Web Console** with persistent working directory, ANSI color output, Tab completion, `Ctrl+C` abort, history (`↑`/`↓`), and mobile shortcut buttons.
+- **LAN Shared Folder (Pocket NAS):**
+  - Fast local file server defaulting to `/sdcard/NetDroidShare` (plus `/sdcard/Download`, `/sdcard`, and auto-detected USB OTG mounts under `/mnt/media_rw/*`) with Read & Write / Read-Only mode toggle.
+  - Zero-RAM chunked multi-file uploads, resumable `Accept-Ranges` / `206 Partial Content` downloads, strict path-traversal protection, List/Grid file browser, offline SVG QR code share modal, and optional native WebDAV (`rclone`) support.
 - **Material 3 Expressive WebUI:**
-  - Offline-first SPA with mobile-first vertical layout, tablet tier, and desktop navigation rail.
+  - Offline-first 6-tab SPA (`Home`, `Clients`, `Firewall`, `Files`, `Console`, `Settings`) with mobile-first vertical layout, tablet tier, and desktop navigation rail.
   - **Appearance & Wallpaper Studio** with 6 curated mesh gradients, synced custom wallpaper upload (`/data/adb/netdroid/custom_bg.*`), live Blur/Dim/Glass Opacity sliders, and automatic Material You dynamic color extraction.
 
 ---
@@ -62,7 +68,7 @@ netdroid restart             # Restart NetDroid HTTP & background daemons
 
 ```sh
 cd netdroid
-zip -r9 ../NetDroid-v1.1.zip .
+zip -r9 ../NetDroid-v1.2.zip .
 ```
 
 All persistent configs, quota history, firewall rules, blocklists, and uploaded wallpapers live in `/data/adb/netdroid/` (with `/data/adb/modules/netdroid/config` symlinked to `/data/adb/netdroid/config`) so your data survives module updates.

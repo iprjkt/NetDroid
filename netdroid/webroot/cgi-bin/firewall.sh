@@ -85,16 +85,26 @@ remove_chain_hook() {
 #    Allow port $PORT ONLY on lo and local hotspot/LAN interfaces.
 #    Explicitly DROP on rmnet+, r_rmnet+, ccmni+, wwan+, pdp+ and default-drop others.
 apply_boundary() {
+    # Read configured SSH port (default 2222) and WebDAV port (default 8766)
+    SSH_PORT=2222
+    if [ -s "$DATA_DIR/config/ssh.json" ]; then
+        sp="$($AWK '{ l=l $0 } END { if(match(l, /"port"[[:space:]]*:[[:space:]]*[0-9]+/)){ m=substr(l,RSTART,RLENGTH); sub(/^[^:]+:[[:space:]]*/,"",m); print m } }' "$DATA_DIR/config/ssh.json" 2>/dev/null)"
+        is_uint "$sp" && SSH_PORT="$sp"
+    fi
+    WEBDAV_PORT=8766
+
     for ipt in iptables ip6tables; do
         command -v "$ipt" >/dev/null 2>&1 || continue
         ensure_chain_hook "$ipt" INPUT NETDROID_IN
         "$ipt" -w 2 -F NETDROID_IN 2>/dev/null || true
 
-        # Allow localhost and local LAN / hotspot / USB tether interfaces (WebUI + local DNS 5353)
+        # Allow localhost and local LAN / hotspot / USB tether interfaces (WebUI, DNS 5353, SSH, WebDAV)
         for iface in lo wlan+ ap+ swlan+ softap+ rndis+ usb+ ncm+; do
             "$ipt" -w 2 -A NETDROID_IN -i "$iface" -p tcp --dport "$PORT" -j ACCEPT 2>/dev/null || true
             "$ipt" -w 2 -A NETDROID_IN -i "$iface" -p udp --dport 5353 -j ACCEPT 2>/dev/null || true
             "$ipt" -w 2 -A NETDROID_IN -i "$iface" -p tcp --dport 5353 -j ACCEPT 2>/dev/null || true
+            "$ipt" -w 2 -A NETDROID_IN -i "$iface" -p tcp --dport "$SSH_PORT" -j ACCEPT 2>/dev/null || true
+            "$ipt" -w 2 -A NETDROID_IN -i "$iface" -p tcp --dport "$WEBDAV_PORT" -j ACCEPT 2>/dev/null || true
         done
 
         # Explicitly block public cellular interfaces
@@ -102,12 +112,16 @@ apply_boundary() {
             "$ipt" -w 2 -A NETDROID_IN -i "$wiface" -p tcp --dport "$PORT" -j DROP 2>/dev/null || true
             "$ipt" -w 2 -A NETDROID_IN -i "$wiface" -p udp --dport 5353 -j DROP 2>/dev/null || true
             "$ipt" -w 2 -A NETDROID_IN -i "$wiface" -p tcp --dport 5353 -j DROP 2>/dev/null || true
+            "$ipt" -w 2 -A NETDROID_IN -i "$wiface" -p tcp --dport "$SSH_PORT" -j DROP 2>/dev/null || true
+            "$ipt" -w 2 -A NETDROID_IN -i "$wiface" -p tcp --dport "$WEBDAV_PORT" -j DROP 2>/dev/null || true
         done
 
-        # Default deny WebUI port & local DNS 5353 from any other interface
+        # Default deny NetDroid service ports from any other interface
         "$ipt" -w 2 -A NETDROID_IN -p tcp --dport "$PORT" -j DROP 2>/dev/null || true
         "$ipt" -w 2 -A NETDROID_IN -p udp --dport 5353 -j DROP 2>/dev/null || true
         "$ipt" -w 2 -A NETDROID_IN -p tcp --dport 5353 -j DROP 2>/dev/null || true
+        "$ipt" -w 2 -A NETDROID_IN -p tcp --dport "$SSH_PORT" -j DROP 2>/dev/null || true
+        "$ipt" -w 2 -A NETDROID_IN -p tcp --dport "$WEBDAV_PORT" -j DROP 2>/dev/null || true
     done
 }
 
