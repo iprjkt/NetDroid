@@ -1,6 +1,6 @@
 id=netdroid
 name=NetDroid
-version=v1.2.0
-versionCode=120
+version=v1.2.1
+versionCode=121
 author=iprjkt
 description=Pocket Router & Homelab for KernelSU: Firewall, Quota Monitor, TTL Optimizer, Smart Charging, DNS/Adblock, Dropbear SSH + Web Console, LAN Pocket NAS & Material 3 Expressive WebUI.

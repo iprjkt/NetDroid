@@ -216,6 +216,7 @@ if [ -z "$ACTION" ] && [ -n "$PATH_INFO" ]; then
         /api/dns|/dns) ACTION="dns" ;;
         /api/ssh|/ssh) ACTION="ssh" ;;
         /api/term/exec|/term/exec) ACTION="term_exec" ;;
+        /api/share/storages|/share/storages) ACTION="share_storages" ;;
         /api/share/list|/share/list) ACTION="share_list" ;;
         /api/share/manage|/share/manage) ACTION="share_manage" ;;
     esac
@@ -621,6 +622,11 @@ case "$ACTION" in
     term_kill)
         send_headers "200 OK"
         sh "$SCRIPT_DIR/terminal.sh" kill
+        ;;
+
+    share_storages)
+        send_headers "200 OK"
+        sh "$SCRIPT_DIR/share.sh" storages
         ;;
 
     share_list)

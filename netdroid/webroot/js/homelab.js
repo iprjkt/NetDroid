@@ -427,10 +427,14 @@
     var shareState = {
         path: '/',
         rootPath: '/sdcard/NetDroidShare',
+        configuredRoot: '/sdcard/NetDroidShare',
+        fallbackActive: false,
+        fallbackReason: '',
         readOnly: false,
         viewMode: 'list', // 'list' | 'grid'
         items: [],
         storage: null,
+        storages: [],
         uploading: false
     };
 
@@ -460,6 +464,136 @@
         return (b ? b + '/' : '/') + n;
     }
 
+    function storageIconSvg(isExt) {
+        if (isExt) {
+            return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="20" height="7" rx="2"/><path d="M6 14V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v9"/><line x1="6" y1="17.5" x2="6.01" y2="17.5"/><line x1="10" y1="17.5" x2="10.01" y2="17.5"/></svg>';
+        }
+        return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>';
+    }
+
+    function applyShareRoot(newRoot) {
+        var cleaned = String(newRoot || '').trim();
+        if (!cleaned) return;
+        global.NetDroidApi.post('share_manage', { op: 'config', root_path: cleaned }).then(function (r) {
+            if (r && r.ok) {
+                shareState.path = '/';
+                shareState.rootPath = r.active_root || r.root_path || cleaned;
+                shareState.configuredRoot = r.configured_root || shareState.rootPath;
+                shareState.fallbackActive = !!r.fallback_active;
+                shareState.fallbackReason = r.fallback_reason || '';
+                shareState.items = r.items || [];
+                shareState.storage = r.storage || {};
+                if (r.storages) shareState.storages = r.storages;
+                renderShare(r);
+                global.NetDroidToast('Shared root: ' + shareState.rootPath, 'success');
+            } else {
+                global.NetDroidToast((r && r.error) || 'Cannot set shared path', 'error');
+            }
+        }).catch(function () {
+            global.NetDroidToast('Failed to update shared path', 'error');
+        });
+    }
+
+    function rescanStorages(notify) {
+        if (!global.NetDroidApi) return;
+        global.NetDroidApi.get('share_storages').then(function (r) {
+            if (!r || !r.ok) return;
+            shareState.storages = r.storages || [];
+            shareState.configuredRoot = r.configured_root || shareState.configuredRoot;
+            shareState.rootPath = r.active_root || shareState.rootPath;
+            shareState.fallbackActive = !!r.fallback_active;
+            shareState.fallbackReason = r.fallback_reason || '';
+            renderStoragesUI();
+            if (notify) {
+                var extCnt = shareState.storages.filter(function (s) { return s.type === 'external'; }).length;
+                global.NetDroidToast(extCnt > 0
+                    ? ('Detected ' + extCnt + ' external USB/HDD drive' + (extCnt > 1 ? 's' : ''))
+                    : 'No external USB/HDD drives mounted (Internal Storage active)', 'info');
+            }
+        }).catch(function () {});
+    }
+
+    function renderStoragesUI() {
+        // Fallback warning banner
+        var fb = $('share-fallback-banner');
+        var fbTxt = $('share-fallback-text');
+        if (fb && fbTxt) {
+            if (shareState.fallbackActive) {
+                fbTxt.textContent = '⚠ ' + (shareState.fallbackReason || ('External drive (' + shareState.configuredRoot + ') is disconnected. Serving Internal Storage fallback.'));
+                fb.classList.add('show');
+            } else {
+                fb.classList.remove('show');
+            }
+        }
+
+        // Storage volume cards
+        var grid = $('share-storage-list');
+        if (grid) {
+            var vols = shareState.storages || [];
+            var activeRoot = shareState.rootPath || '/sdcard/NetDroidShare';
+            grid.innerHTML = vols.map(function (v) {
+                var isExt = v.type === 'external';
+                var isSelected = isExt
+                    ? (activeRoot === v.path || activeRoot.indexOf(v.mount_point + '/') === 0 || activeRoot === v.mount_point)
+                    : (activeRoot.indexOf('/sdcard') === 0 || activeRoot.indexOf('/storage/emulated/0') === 0);
+                var pct = Number(v.used_pct) || 0;
+                return '<button type="button" class="storage-vol-card' + (isExt ? ' external' : '') + (isSelected ? ' active' : '') + '" data-vol-path="' + esc(v.path) + '">' +
+                    '<div class="storage-vol-top">' +
+                        '<div class="storage-vol-title-wrap">' +
+                            '<div class="storage-vol-icon">' + storageIconSvg(isExt) + '</div>' +
+                            '<div style="min-width:0;flex:1;">' +
+                                '<div class="storage-vol-name">' + esc(v.label) + '</div>' +
+                                '<div class="storage-vol-path">' + esc(v.path) + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<span class="fs-badge">' + esc(v.fstype || 'fs') + '</span>' +
+                    '</div>' +
+                    '<div class="m3-progress-track" style="height:6px;">' +
+                        '<div class="m3-progress-fill' + (pct >= 90 ? ' crit' : (pct >= 80 ? ' warn' : '')) + '" style="width:' + Math.max(2, Math.min(100, pct)) + '%;"></div>' +
+                    '</div>' +
+                    '<div class="storage-vol-meta">' +
+                        '<span>' + fmtBytes(v.free_bytes || 0) + ' free</span>' +
+                        '<span>' + fmtBytes(v.total_bytes || 0) + ' total</span>' +
+                    '</div>' +
+                '</button>';
+            }).join('');
+
+            grid.querySelectorAll('[data-vol-path]').forEach(function (card) {
+                card.addEventListener('click', function () {
+                    applyShareRoot(card.getAttribute('data-vol-path'));
+                });
+            });
+        }
+
+        // Custom path input + quick suggestion chips
+        var pathInput = $('input-share-custom-path');
+        if (pathInput && document.activeElement !== pathInput) {
+            pathInput.value = shareState.configuredRoot || shareState.rootPath || '/sdcard/NetDroidShare';
+        }
+        var chipsBox = $('share-path-presets');
+        if (chipsBox) {
+            var presets = [
+                { lbl: 'NetDroidShare', path: '/sdcard/NetDroidShare' },
+                { lbl: 'Download', path: '/sdcard/Download' },
+                { lbl: 'Internal Root', path: '/sdcard' }
+            ];
+            (shareState.storages || []).forEach(function (v) {
+                if (v.type === 'external') {
+                    presets.push({ lbl: v.uuid + '/Shared', path: v.path + '/Shared' });
+                }
+            });
+            chipsBox.innerHTML = presets.map(function (pr) {
+                var act = (shareState.rootPath === pr.path) ? ' accent' : '';
+                return '<button type="button" class="m3-chip clickable' + act + '" data-preset-path="' + esc(pr.path) + '">' + esc(pr.lbl) + '</button>';
+            }).join('');
+            chipsBox.querySelectorAll('[data-preset-path]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    applyShareRoot(b.getAttribute('data-preset-path'));
+                });
+            });
+        }
+    }
+
     function loadShare(targetPath) {
         if (!global.NetDroidApi) return;
         var p = targetPath != null ? targetPath : shareState.path;
@@ -470,20 +604,27 @@
                 return;
             }
             shareState.path = r.path || '/';
-            shareState.rootPath = r.root_path || '/sdcard/NetDroidShare';
+            shareState.rootPath = r.active_root || r.root_path || '/sdcard/NetDroidShare';
+            shareState.configuredRoot = r.configured_root || shareState.rootPath;
+            shareState.fallbackActive = !!r.fallback_active;
+            shareState.fallbackReason = r.fallback_reason || '';
             shareState.readOnly = !!r.read_only;
             shareState.items = r.items || [];
             shareState.storage = r.storage || {};
+            if (r.storages) shareState.storages = r.storages;
             renderShare(r);
         }).catch(function () {});
     }
 
     function renderShare(r) {
-        // Storage bar
+        // Storage volume switcher & fallback banner
+        renderStoragesUI();
+
+        // Active storage bar
         var st = r.storage || {};
         var pct = Number(st.used_pct) || 0;
         if ($('share-storage-text')) {
-            $('share-storage-text').textContent = fmtBytes(st.free_bytes || 0) + ' free of ' + fmtBytes(st.total_bytes || 0);
+            $('share-storage-text').textContent = fmtBytes(st.free_bytes || 0) + ' free of ' + fmtBytes(st.total_bytes || 0) + ' (' + shareState.rootPath + ')';
         }
         if ($('share-storage-pct')) $('share-storage-pct').textContent = pct + '% used';
         if ($('share-storage-fill')) {
@@ -498,17 +639,6 @@
         // Hide upload/mkdir in Read-Only mode
         if ($('share-upload-zone')) $('share-upload-zone').style.display = shareState.readOnly ? 'none' : 'flex';
         if ($('btn-share-mkdir')) $('btn-share-mkdir').style.display = shareState.readOnly ? 'none' : 'inline-flex';
-
-        // Root path selector
-        var sel = $('select-share-root');
-        if (sel && r.available_roots) {
-            var roots = r.available_roots.slice();
-            if (roots.indexOf(shareState.rootPath) === -1) roots.unshift(shareState.rootPath);
-            sel.innerHTML = roots.map(function (rp) {
-                var lbl = rp.indexOf('/mnt/media_rw/') === 0 ? ('USB OTG: ' + rp.split('/').pop()) : rp;
-                return '<option value="' + esc(rp) + '"' + (rp === shareState.rootPath ? ' selected' : '') + '>' + esc(lbl) + '</option>';
-            }).join('');
-        }
 
         // Optional WebDAV row
         var wdRow = $('share-webdav-row');
@@ -646,7 +776,7 @@
         var progText = $('share-upload-status');
         if (progWrap) progWrap.style.display = 'block';
 
-        var CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB chunks keep RAM tiny even for multi-GB ROMs
+        var CHUNK_SIZE = 16 * 1024 * 1024; // 16 MB chunks minimize BusyBox CGI fork overhead on large ROMs/ISOs
         var idx = 0;
 
         function nextFile() {
@@ -916,19 +1046,31 @@
                 });
             });
         }
-        if ($('select-share-root')) {
-            $('select-share-root').addEventListener('change', function () {
-                var rp = $('select-share-root').value;
-                global.NetDroidApi.post('share_manage', { op: 'config', root_path: rp }).then(function (r) {
-                    if (r && r.ok) {
-                        shareState.path = '/';
-                        shareState.rootPath = r.root_path;
-                        renderShare(r);
-                        global.NetDroidToast('Shared root: ' + r.root_path, 'success');
-                    } else {
-                        global.NetDroidToast((r && r.error) || 'Cannot open folder', 'error');
-                    }
-                });
+        if ($('btn-rescan-storages')) {
+            $('btn-rescan-storages').addEventListener('click', function () {
+                rescanStorages(true);
+                loadShare();
+            });
+        }
+        if ($('btn-fallback-rescan')) {
+            $('btn-fallback-rescan').addEventListener('click', function () {
+                rescanStorages(true);
+                loadShare('/');
+            });
+        }
+        if ($('btn-apply-custom-path')) {
+            $('btn-apply-custom-path').addEventListener('click', function () {
+                var p = ($('input-share-custom-path') && $('input-share-custom-path').value || '').trim();
+                if (!p) { global.NetDroidToast('Enter a valid storage path', 'error'); return; }
+                applyShareRoot(p);
+            });
+        }
+        if ($('input-share-custom-path')) {
+            $('input-share-custom-path').addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    applyShareRoot($('input-share-custom-path').value);
+                }
             });
         }
         if ($('sw-share-webdav')) {

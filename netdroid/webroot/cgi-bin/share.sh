@@ -137,9 +137,21 @@ load_share_config() {
     [ -z "$SH_ROOT" ] && SH_ROOT="/sdcard/NetDroidShare"
     [ -z "$SH_WEBDAV_PORT" ] && SH_WEBDAV_PORT=8766
 
-    # Auto-create default shared directory if missing
-    if [ "$SH_ROOT" = "/sdcard/NetDroidShare" ] && [ ! -d "$SH_ROOT" ]; then
-        mkdir -p /storage/emulated/0/NetDroidShare 2>/dev/null || mkdir -p "$SH_ROOT" 2>/dev/null || true
+    # Always ensure default internal share folder exists as fallback
+    if [ ! -d /sdcard/NetDroidShare ]; then
+        mkdir -p /storage/emulated/0/NetDroidShare 2>/dev/null || mkdir -p /sdcard/NetDroidShare 2>/dev/null || true
+    fi
+
+    # Graceful fallback if configured external drive/path is disconnected/unmounted
+    CONFIGURED_ROOT="$SH_ROOT"
+    ACTIVE_ROOT="$SH_ROOT"
+    FALLBACK_ACTIVE=0
+    FALLBACK_REASON=""
+
+    if [ ! -d "$ACTIVE_ROOT" ] || [ ! -r "$ACTIVE_ROOT" ]; then
+        FALLBACK_ACTIVE=1
+        FALLBACK_REASON="Configured path ($CONFIGURED_ROOT) is unavailable or disconnected. Falling back to Internal Storage."
+        ACTIVE_ROOT="/sdcard/NetDroidShare"
     fi
 }
 
@@ -153,10 +165,140 @@ write_share_json() {
     chmod 0644 "$SHARE_JSON" 2>/dev/null || true
 }
 
-# Canonicalize root and safely resolve relative path strictly inside root (blocks .. traversal)
+# Validate custom root path (must stay inside internal storage or external OTG mounts)
+is_allowed_root_path() {
+    p="$1"
+    case "/$p/" in
+        *"/../"*) return 1 ;;
+    esac
+    case "$p" in
+        /sdcard|/sdcard/*|/storage/emulated/0|/storage/emulated/0/*|/mnt/media_rw/*|/storage/*)
+            case "$p" in
+                /storage/self|/storage/self/*|/storage/emulated) return 1 ;;
+            esac
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Detect filesystem type & block device from /proc/mounts for a given mountpoint
+mount_info_for() {
+    mp="$1"
+    $AWK -v target="$mp" '
+    $2 == target {
+        dev = $1; fst = $3
+    }
+    END {
+        if (fst == "") fst = "unknown"
+        printf "%s|%s\n", dev, fst
+    }' /proc/mounts 2>/dev/null
+}
+
+# Build JSON array of Internal Storage + all mounted external USB/HDD/SD volumes
+get_storages_json() {
+    # Helper: format a single storage volume entry using df -k
+    emit_vol() {
+        v_id="$1"; v_lbl="$2"; v_uuid="$3"; v_path="$4"; v_mp="$5"; v_type="$6"; v_fs="$7"
+        df_line="$($BB df -k "$v_mp" 2>/dev/null | $AWK '
+            NR == 2 {
+                tot = ($2 + 0) * 1024
+                used = ($3 + 0) * 1024
+                avail = ($4 + 0) * 1024
+                pct = (tot > 0) ? int((used * 100) / tot + 0.5) : 0
+                printf "%.0f %.0f %.0f %d", tot, used, avail, pct
+                ok = 1
+            }
+            END { if (!ok) printf "0 0 0 0" }
+        ')"
+        set -- $df_line
+        printf '{"id":"%s","label":"%s","uuid":"%s","path":"%s","mount_point":"%s","type":"%s","fstype":"%s","total_bytes":%s,"used_bytes":%s,"free_bytes":%s,"used_pct":%s}' \
+            "$(json_escape "$v_id")" "$(json_escape "$v_lbl")" "$(json_escape "$v_uuid")" \
+            "$(json_escape "$v_path")" "$(json_escape "$v_mp")" "$(json_escape "$v_type")" "$(json_escape "$v_fs")" \
+            "${1:-0}" "${2:-0}" "${3:-0}" "${4:-0}"
+    }
+
+    # Detect internal storage fstype (check /data then /storage/emulated)
+    int_fs="$($AWK '$2 == "/data" { f = $3 } END { if (f == "") f = "f2fs"; print f }' /proc/mounts 2>/dev/null)"
+    int_dev="$($BB df -k /storage/emulated/0 2>/dev/null | $AWK 'NR==2{print $1}')"
+
+    out="["
+    out="${out}$(emit_vol "internal" "Internal Storage" "internal" "/sdcard/NetDroidShare" "/storage/emulated/0" "internal" "$int_fs")"
+
+    seen_uuids=" "
+
+    # 1. Scan /mnt/media_rw/* (direct kernel mounts: ext4, exfat, vfat, ntfs, ntfs3, sdfat, fuseblk)
+    if [ -d /mnt/media_rw ]; then
+        for mp in /mnt/media_rw/*; do
+            [ -d "$mp" ] || continue
+            uuid="$(basename "$mp")"
+            [ "$uuid" = "*" ] && continue
+
+            minfo="$(mount_info_for "$mp")"
+            mdev="${minfo%%|*}"
+            mfs="${minfo##*|}"
+            # Verify it is an active distinct mountpoint
+            if [ -z "$mdev" ]; then
+                dfdev="$($BB df -k "$mp" 2>/dev/null | $AWK 'NR==2{print $1}')"
+                [ -z "$dfdev" ] || [ "$dfdev" = "$int_dev" ] && continue
+                mdev="$dfdev"
+            fi
+
+            # Try reading filesystem volume label via blkid if available
+            vlabel=""
+            if [ -n "$mdev" ] && command -v blkid >/dev/null 2>&1; then
+                vlabel="$(blkid "$mdev" 2>/dev/null | $SED -n 's/.*LABEL="\([^"]*\)".*/\1/p' | $TR -d '\r\n')"
+            fi
+            [ -z "$vlabel" ] && vlabel="USB / HDD ($uuid)"
+
+            seen_uuids="${seen_uuids}${uuid} "
+            out="${out},$(emit_vol "ext_${uuid}" "$vlabel" "$uuid" "$mp" "$mp" "external" "$mfs")"
+        done
+    fi
+
+    # 2. Scan /storage/* (excluding emulated & self, skipping UUIDs already found under /mnt/media_rw)
+    if [ -d /storage ]; then
+        for mp in /storage/*; do
+            [ -d "$mp" ] || continue
+            uuid="$(basename "$mp")"
+            case "$uuid" in
+                emulated|self|"*") continue ;;
+            esac
+            case "$seen_uuids" in
+                *" $uuid "*) continue ;;
+            esac
+
+            minfo="$(mount_info_for "$mp")"
+            mdev="${minfo%%|*}"
+            mfs="${minfo##*|}"
+            dfdev="$($BB df -k "$mp" 2>/dev/null | $AWK 'NR==2{print $1}')"
+            [ -z "$dfdev" ] || [ "$dfdev" = "$int_dev" ] && continue
+            [ "$mfs" = "unknown" ] && mfs="fuse"
+
+            seen_uuids="${seen_uuids}${uuid} "
+            out="${out},$(emit_vol "ext_${uuid}" "External ($uuid)" "$uuid" "$mp" "$mp" "external" "$mfs")"
+        done
+    fi
+
+    out="${out}]"
+    printf '%s' "$out"
+}
+
+do_storages() {
+    load_share_config
+    storages_json="$(get_storages_json)"
+    fb_b="false"; [ "$FALLBACK_ACTIVE" = "1" ] && fb_b="true"
+    printf '{"ok":true,"configured_root":"%s","active_root":"%s","fallback_active":%s,"fallback_reason":"%s","storages":%s}\n' \
+        "$(json_escape "$CONFIGURED_ROOT")" "$(json_escape "$ACTIVE_ROOT")" \
+        "$fb_b" "$(json_escape "$FALLBACK_REASON")" "$storages_json"
+}
+
+# Canonicalize active root and safely resolve relative path strictly inside active root (blocks .. traversal)
 resolve_safe_path() {
     rel="$1"
-    REAL_ROOT="$($BB realpath "$SH_ROOT" 2>/dev/null)"
+    REAL_ROOT="$($BB realpath "$ACTIVE_ROOT" 2>/dev/null)"
     if [ -z "$REAL_ROOT" ] || [ ! -d "$REAL_ROOT" ]; then
         return 1
     fi
@@ -239,10 +381,10 @@ sync_webdav() {
         [ -n "$wpid" ] && kill "$wpid" 2>/dev/null || true
         rm -f "$WEBDAV_PID"
     fi
-    if [ "$SH_WEBDAV" = "1" ] && [ -n "$WEBDAV_BIN" ] && [ -d "$SH_ROOT" ]; then
+    if [ "$SH_WEBDAV" = "1" ] && [ -n "$WEBDAV_BIN" ] && [ -d "$ACTIVE_ROOT" ]; then
         ro_flag=""
         [ "$SH_RO" = "1" ] && ro_flag="--read-only"
-        "$BB" setsid "$WEBDAV_BIN" serve webdav "$SH_ROOT" --addr "0.0.0.0:$SH_WEBDAV_PORT" $ro_flag </dev/null >/dev/null 2>&1 &
+        "$BB" setsid "$WEBDAV_BIN" serve webdav "$ACTIVE_ROOT" --addr "0.0.0.0:$SH_WEBDAV_PORT" $ro_flag </dev/null >/dev/null 2>&1 &
         printf '%s\n' "$!" > "$WEBDAV_PID"
     fi
 }
@@ -327,12 +469,15 @@ do_list() {
         wd_run="true"
     fi
 
+    storages_json="$(get_storages_json)"
     ro_b="false"; [ "$SH_RO" = "1" ] && ro_b="true"
     en_b="false"; [ "$SH_ENABLED" = "1" ] && en_b="true"
+    fb_b="false"; [ "$FALLBACK_ACTIVE" = "1" ] && fb_b="true"
 
-    printf '{"ok":true,"enabled":%s,"read_only":%s,"root_path":"%s","path":"/%s","storage":%s,"available_roots":%s,"webdav":{"supported":%s,"running":%s,"port":%s},"items":%s}\n' \
-        "$en_b" "$ro_b" "$(json_escape "$SH_ROOT")" "$(json_escape "$REL_CLEAN")" \
-        "$storage_json" "$roots_json" "$wd_sup" "$wd_run" "$SH_WEBDAV_PORT" "$items_json"
+    printf '{"ok":true,"enabled":%s,"read_only":%s,"root_path":"%s","configured_root":"%s","active_root":"%s","fallback_active":%s,"fallback_reason":"%s","path":"/%s","storage":%s,"storages":%s,"available_roots":%s,"webdav":{"supported":%s,"running":%s,"port":%s},"items":%s}\n' \
+        "$en_b" "$ro_b" "$(json_escape "$ACTIVE_ROOT")" "$(json_escape "$CONFIGURED_ROOT")" "$(json_escape "$ACTIVE_ROOT")" \
+        "$fb_b" "$(json_escape "$FALLBACK_REASON")" "$(json_escape "$REL_CLEAN")" \
+        "$storage_json" "$storages_json" "$roots_json" "$wd_sup" "$wd_run" "$SH_WEBDAV_PORT" "$items_json"
 }
 
 # Streaming file download with full HTTP Range (206 Partial Content) support
@@ -472,14 +617,18 @@ do_manage() {
     case "$op" in
         config)
             if [ -n "$in_root" ]; then
-                # Allow internal storage or /mnt/media_rw paths
                 clean_root="$(printf '%s' "$in_root" | $SED 's#//*#/#g; s#/$##')"
                 [ -z "$clean_root" ] && clean_root="/sdcard/NetDroidShare"
+                if ! is_allowed_root_path "$clean_root"; then
+                    printf '{"ok":false,"error":"Path must be inside /sdcard, /storage, or /mnt/media_rw"}\n'
+                    return 1
+                fi
                 if [ ! -d "$clean_root" ]; then
+                    # Only auto-create subfolder if its storage volume mount already exists
                     mkdir -p "$clean_root" 2>/dev/null || true
                 fi
                 if [ ! -d "$clean_root" ]; then
-                    printf '{"ok":false,"error":"Directory does not exist or cannot be created"}\n'
+                    printf '{"ok":false,"error":"Directory does not exist or storage volume is not mounted"}\n'
                     return 1
                 fi
                 SH_ROOT="$clean_root"
@@ -491,6 +640,7 @@ do_manage() {
                 case "$in_wd" in 1|true|yes|on) SH_WEBDAV=1 ;; *) SH_WEBDAV=0 ;; esac
             fi
             write_share_json
+            load_share_config
             sync_webdav
             do_list "/"
             ;;
@@ -566,6 +716,10 @@ if [ -z "$1" ] && [ -n "$REQUEST_METHOD" ]; then
             json_hdr "200 OK"
             do_list "$(qs_get path)"
             ;;
+        storages)
+            json_hdr "200 OK"
+            do_storages
+            ;;
         *)
             json_hdr "400 Bad Request"
             printf '{"ok":false,"error":"Unknown share CGI action"}\n'
@@ -576,8 +730,9 @@ fi
 
 # CLI invocation from api.sh / service.sh
 case "$1" in
-    list|"") do_list "$2" ;;
-    manage)  do_manage "$2" "$3" "$4" "$5" "$6" "$7" "$8" ;;
+    list|"")  do_list "$2" ;;
+    storages) do_storages ;;
+    manage)   do_manage "$2" "$3" "$4" "$5" "$6" "$7" "$8" ;;
     sync)    load_share_config; sync_webdav ;;
     stop)
         if [ -f "$WEBDAV_PID" ]; then

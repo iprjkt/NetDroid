@@ -404,10 +404,25 @@
                                 <div class="card-subtitle">Fast resumable LAN file transfers &amp; OTG sharing</div>
                             </div>
                         </div>
-                        <button id="btn-share-qr" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Share / QR</button>
+                        <div class="header-actions">
+                            <button id="btn-rescan-storages" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Rescan Drives</button>
+                            <button id="btn-share-qr" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Share / QR</button>
+                        </div>
                     </div>
 
-                    <!-- Storage Capacity Bar -->
+                    <!-- Graceful Fallback Warning Banner (when configured external HDD/USB is unplugged) -->
+                    <div id="share-fallback-banner" class="fallback-banner" role="alert">
+                        <span id="share-fallback-text"></span>
+                        <button id="btn-fallback-rescan" type="button" class="m3-btn m3-btn-outlined m3-btn-sm">Retry Drive</button>
+                    </div>
+
+                    <!-- Storage Volume Switcher (Internal + Auto-Detected USB / HDD / SD) -->
+                    <div style="margin-bottom:4px;">
+                        <div class="setting-label" style="font-size:0.78rem;">Storage Volumes</div>
+                        <div id="share-storage-list" class="storage-vol-grid"></div>
+                    </div>
+
+                    <!-- Active Volume Storage Capacity Bar -->
                     <div style="margin-bottom:14px;">
                         <div class="quota-row-top">
                             <span id="share-storage-text" class="quota-row-name">Detecting storage...</span>
@@ -418,13 +433,15 @@
                         </div>
                     </div>
 
-                    <!-- Root Folder + Read/Write Mode -->
+                    <!-- Custom Root Directory + Read/Write Mode -->
                     <div class="form-grid-2" style="margin-bottom:12px;">
                         <div class="field-group">
-                            <label for="select-share-root">Shared Directory</label>
-                            <select id="select-share-root" class="m3-input">
-                                <option value="/sdcard/NetDroidShare">/sdcard/NetDroidShare</option>
-                            </select>
+                            <label for="input-share-custom-path">Custom Root Path</label>
+                            <div class="inline-form">
+                                <input id="input-share-custom-path" class="m3-input" type="text" placeholder="/mnt/media_rw/UUID/Shared or /sdcard/Download">
+                                <button id="btn-apply-custom-path" type="button" class="m3-btn m3-btn-tonal m3-btn-sm">Apply</button>
+                            </div>
+                            <div id="share-path-presets" class="custom-path-chips"></div>
                         </div>
                         <div class="field-group">
                             <label>Access Permission Mode</label>
@@ -468,7 +485,7 @@
                     <!-- Drag & Drop Multi-File Upload Zone -->
                     <div id="share-upload-zone" class="upload-dropzone">
                         <div style="font-size:0.84rem;font-weight:700;">Drop files here or select multiple files to upload</div>
-                        <div style="font-size:0.72rem;color:var(--md-on-surface-variant);">Streams directly to storage in 2 MB chunks — safe for large ROMs &amp; ISOs</div>
+                        <div style="font-size:0.72rem;color:var(--md-on-surface-variant);">Streams directly to storage in 16 MB high-speed chunks — safe for large ROMs &amp; ISOs</div>
                         <input id="share-file-input" type="file" multiple style="display:none;">
                         <button id="btn-share-upload" type="button" class="m3-btn m3-btn-filled m3-btn-sm">Upload Files</button>
                     </div>
